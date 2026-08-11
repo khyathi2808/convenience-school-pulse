@@ -757,10 +757,27 @@ function brochureProblemCard(p){
     </article>`;
 }
 
+function summarizeGroup(list){
+  const grades = [...new Set(list.map(p => p.grade))].sort((a,b) => a - b);
+  const subjects = [...new Set(list.map(p => p.subject))];
+  const sections = list.reduce((a,p) => a + p.affectedCount, 0);
+  return {grades, subjects, sections};
+}
+function joinList(arr){
+  if(arr.length <= 1) return arr.join('');
+  if(arr.length === 2) return arr.join(' and ');
+  return arr.slice(0, -1).join(', ') + ', and ' + arr[arr.length - 1];
+}
+
 function buildBrochureHtml(){
   const reds = problems.filter(p => p.severity === 'red').sort((a,b) => b.affectedCount - a.affectedCount);
   const ambers = problems.filter(p => p.severity === 'amber').sort((a,b) => b.affectedCount - a.affectedCount);
   const pctOf = n => (n / scaleTotal * 100).toFixed(1);
+  const redSummary = summarizeGroup(reds);
+  const amberSummary = summarizeGroup(ambers);
+  const execSummary = `Right now, ${reds.length} problem${reds.length === 1 ? '' : 's'} need${reds.length === 1 ? 's' : ''} immediate action — touching Grade${redSummary.grades.length === 1 ? '' : 's'} ${joinList(redSummary.grades)} across ${joinList(redSummary.subjects)}, ${redSummary.sections} section${redSummary.sections === 1 ? '' : 's'} in total. Another ${ambers.length} problem${ambers.length === 1 ? '' : 's'} sit${ambers.length === 1 ? 's' : ''} on the watch list, spanning Grade${amberSummary.grades.length === 1 ? '' : 's'} ${joinList(amberSummary.grades)} across ${joinList(amberSummary.subjects)} — ${amberSummary.sections} section${amberSummary.sections === 1 ? '' : 's'}. Together that's ${problems.length} distinct problems behind the numbers on the dashboard, not one row per grade × subject combination, since some combinations carry more than one issue.`;
+  const redIntro = `${reds.length} problem${reds.length === 1 ? '' : 's'} crossed the threshold for immediate attention this month, affecting ${redSummary.sections} section${redSummary.sections === 1 ? '' : 's'} across Grade${redSummary.grades.length === 1 ? '' : 's'} ${joinList(redSummary.grades)}. These are ranked by how many sections each one touches — read top to bottom for where to look first.`;
+  const amberIntro = `${ambers.length} problem${ambers.length === 1 ? '' : 's'} are early enough to just watch rather than act on, covering ${amberSummary.sections} section${amberSummary.sections === 1 ? '' : 's'} across Grade${amberSummary.grades.length === 1 ? '' : 's'} ${joinList(amberSummary.grades)}. None of these need a response yet — they're here so nothing quietly becomes urgent between reports.`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -798,9 +815,11 @@ function buildBrochureHtml(){
   .b-stat .n{font-family:'Fraunces',serif;font-weight:600;font-size:26px;color:var(--ink-900);}
   .b-stat .l{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);margin-top:4px;}
   .b-stat.red .n{color:var(--rust);} .b-stat.amber .n{color:var(--amber);} .b-stat.green .n{color:var(--forest);}
-  .b-section-title{display:flex;align-items:baseline;gap:10px;margin:44px 0 18px;}
+  .b-exec-summary{background:var(--card);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:16px 20px;font-size:13.5px;line-height:1.65;color:var(--ink-800);margin:0 0 8px;}
+  .b-section-title{display:flex;align-items:baseline;gap:10px;margin:44px 0 4px;}
   .b-section-title h2{font-family:'Fraunces',serif;font-weight:500;font-size:20px;margin:0;color:var(--ink-900);}
   .b-section-title .count{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--slate);}
+  .b-section-desc{font-size:13px;color:var(--slate);line-height:1.6;margin:0 0 18px;max-width:640px;}
   .b-card{background:var(--card);border-radius:14px;border-top:4px solid var(--rule);box-shadow:0 1px 2px rgba(16,27,51,.05), 0 8px 24px rgba(16,27,51,.06);padding:24px 26px 22px;margin-bottom:20px;}
   .b-card.red{border-top-color:var(--rust);} .b-card.amber{border-top-color:var(--amber);}
   .b-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
@@ -850,10 +869,14 @@ function buildBrochureHtml(){
     <div class="b-stat red"><div class="n">${scaleCounts.red}</div><div class="l">Action (${pctOf(scaleCounts.red)}%)</div></div>
   </div>
 
+  <p class="b-exec-summary">${escapeHtml(execSummary)}</p>
+
   <div class="b-section-title"><h2>Action Required</h2><span class="count">${reds.length} problem${reds.length === 1 ? '' : 's'}</span></div>
+  <p class="b-section-desc">${escapeHtml(redIntro)}</p>
   ${reds.map(brochureProblemCard).join('')}
 
   <div class="b-section-title"><h2>Watch List</h2><span class="count">${ambers.length} problem${ambers.length === 1 ? '' : 's'}</span></div>
+  <p class="b-section-desc">${escapeHtml(amberIntro)}</p>
   ${ambers.map(brochureProblemCard).join('')}
 
   <div class="b-closing">
