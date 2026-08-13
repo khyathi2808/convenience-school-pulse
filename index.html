@@ -848,6 +848,10 @@ function REPORT_TEMPLATE(o){
   .pg-shot-legend span{display:inline-flex;align-items:center;gap:6px;}
   .pg-dot{width:9px;height:9px;border-radius:2px;display:inline-block;}
   .pg-dot.immediate{background:var(--pg-red);} .pg-dot.thisweek{background:var(--pg-amber);} .pg-dot.monitor{background:#8FA6B8;} .pg-dot.quiet{background:#E4E8E1;}
+  .pg-shot-takeaway{font-family:'IBM Plex Serif',serif;font-style:italic;font-size:12.5px;color:var(--pg-light-slate);border-top:1px solid var(--pg-light-rule);padding-top:12px;margin:14px 0 0;}
+  .pg-shot-fakebtn{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#fff;background:var(--pg-light-ink);border-radius:8px;padding:8px 14px;margin-top:14px;}
+  .pg-sample-item{background:#F4F5F1;border-radius:10px;padding:14px 16px;margin:10px 0;font-size:12.5px;color:var(--pg-light-ink);}
+  .pg-chip-mini{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--pg-light-ink);background:#fff;border:1px solid var(--pg-light-rule);border-radius:6px;padding:2px 8px;margin:2px 3px 0 0;}
 
   .pg-bar{display:flex;width:100%;height:18px;border-radius:9px;overflow:hidden;background:var(--pg-light-rule);}
   .pg-bar-seg{height:100%;}
@@ -896,6 +900,10 @@ function REPORT_TEMPLATE(o){
   .pg-flag-headline{font-size:14.5px;line-height:1.55;color:var(--pg-text);margin:0 0 10px;}
   .pg-flag-step{font-size:12.5px;line-height:1.6;color:var(--pg-text-dim);margin:0;}
   .pg-flag-step strong{color:var(--pg-text);}
+  .pg-flag-title{font-family:'IBM Plex Serif',serif;font-weight:600;font-size:15.5px;margin:0 0 8px;color:var(--pg-text);}
+  .pg-flag-chips-label{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--pg-text-dim);margin:0 0 8px;}
+  .pg-flag-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+  .pg-flag-chip{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--pg-text);background:rgba(255,255,255,.06);border:1px solid var(--pg-line);border-radius:6px;padding:3px 8px;}
 
   .pg-closing{border-top:1px solid var(--pg-line);margin-top:26px;padding-top:24px;text-align:center;}
   .pg-closing p{font-family:'IBM Plex Serif',serif;font-style:italic;font-size:14.5px;color:var(--pg-gold-bright);margin:0;}
@@ -921,6 +929,7 @@ function REPORT_TEMPLATE(o){
 
   <div class="pg-callout">${o.calloutHtml}</div>
 
+  ${o.customScreenshotHtml || `
   <div class="pg-screenshot-wrap">
     <div class="pg-shot-head">
       <span class="pg-shot-tag">${escapeHtml(o.screenshotEyebrow)}</span>
@@ -932,7 +941,7 @@ function REPORT_TEMPLATE(o){
       ${o.screenshotBodyHtml}
       ${o.screenshotLegendHtml || ''}
     </div>
-  </div>
+  </div>`}
   <div class="pg-screenshot-caption">${escapeHtml(o.screenshotCaption)}</div>
 
   <div class="pg-stats">${statTiles}</div>
@@ -954,7 +963,7 @@ function REPORT_TEMPLATE(o){
     </div>
   </div>
 
-  <h2 class="pg-h2" style="font-size:22px;">${escapeHtml(o.flaggedTitle)}</h2>
+  <h2 class="pg-h2" style="font-size:22px;">${o.flaggedTitle}</h2>
   <p class="pg-sub">${escapeHtml(o.flaggedSub)}</p>
 
   ${o.flaggedCardsHtml}
@@ -969,14 +978,17 @@ function REPORT_TEMPLATE(o){
 }
 
 function flagCardHtml(p){
-  const label = p.severity === 'red' ? 'Action Required' : 'Watch';
+  const label = p.severity === 'red' ? 'Action Needed' : 'Watch';
   return `
     <article class="pg-flag-card">
       <div class="pg-flag-head">
         <span class="pg-badge ${p.severity}">${label}</span>
-        <span class="pg-flag-context">Grade ${p.grade} · ${escapeHtml(p.subject)} — ${p.affectedCount} section${p.affectedCount === 1 ? '' : 's'}</span>
+        <span class="pg-flag-context">Grade ${p.grade} · ${escapeHtml(p.subject)}</span>
       </div>
-      <p class="pg-flag-headline">${escapeHtml(p.issue)} — ${escapeHtml(p.detail)}</p>
+      <h4 class="pg-flag-title">${escapeHtml(p.issue)}</h4>
+      <p class="pg-flag-headline">${escapeHtml(p.detail)}</p>
+      <div class="pg-flag-chips-label">Sections affected</div>
+      <div class="pg-flag-chips">${p.affectedSections.map(s => `<span class="pg-flag-chip">${escapeHtml(s)}</span>`).join('')}</div>
       <p class="pg-flag-step"><strong>Suggested next step:</strong> ${escapeHtml(p.step)}</p>
     </article>`;
 }
@@ -988,6 +1000,76 @@ function screenshotBarHtml(){
       <div class="pg-bar-seg amber" style="width:${pct(scaleCounts.amber)}%;"></div>
       <div class="pg-bar-seg red" style="width:${pct(scaleCounts.red)}%;"></div>
     </div>`;
+}
+
+function statusGridHtml(){
+  const head = scaleSubjects.map(s => `<th>${escapeHtml(s)}</th>`).join('');
+  const rows = scaleGrades.map(g => {
+    const cells = scaleSubjects.map(s => {
+      const list = problemsByCombo[comboKey(g, s)];
+      if(!list || !list.length) return `<td class="pg-cell pg-cell-quiet"></td>`;
+      const worst = list.some(p => p.severity === 'red') ? 'red' : 'amber';
+      return `<td class="pg-cell pg-cell-${worst === 'red' ? 'immediate' : 'thisweek'}">${list.length}</td>`;
+    }).join('');
+    return `<tr><td class="pg-rowlabel">Grade ${g}</td>${cells}</tr>`;
+  }).join('');
+  return `<table class="pg-heat"><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function screenshotMultiHtml(reds, ambers){
+  const sample = reds[0] || ambers[0];
+  const sampleLabel = sample.severity === 'red' ? 'Action Required' : 'Watch';
+  return `
+  <div class="pg-screenshot-wrap" style="border-top:4px solid var(--pg-red);">
+    <div class="pg-shot-head">
+      <span class="pg-shot-tag">Convenience · Pulse</span>
+      <span class="pg-shot-context">STEP 1 OF 3</span>
+    </div>
+    <div class="pg-screenshot-inner">
+      <h3>Pulse Summary Bar</h3>
+      <p>The single-glance layer. One segmented bar, real counts — this is the one place raw numbers earn their place, since these are item counts, not diagnostic scores.</p>
+      ${screenshotBarHtml()}
+      <div class="pg-shot-legend" style="margin-top:12px;">
+        <span><span class="pg-dot" style="background:#5C8F71;"></span>${scaleCounts.green} On Track</span>
+        <span><span class="pg-dot" style="background:var(--pg-amber);"></span>${scaleCounts.amber} Watch</span>
+        <span><span class="pg-dot" style="background:var(--pg-red);"></span>${scaleCounts.red} Action</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pg-screenshot-wrap" style="border-top:4px solid var(--pg-amber);">
+    <div class="pg-shot-head">
+      <span class="pg-shot-tag">Convenience · Pulse</span>
+      <span class="pg-shot-context">STEP 2 OF 3</span>
+    </div>
+    <div class="pg-screenshot-inner">
+      <h3>Status Grid</h3>
+      <p>The "where" layer. Each cell is one grade × subject combination. The number is how many distinct action items exist there — not sections, not severity, just how many separate things need a response.</p>
+      ${statusGridHtml()}
+      <p class="pg-shot-takeaway"><em>Grade 9 Science shows "2" — two separate, unrelated problems in the same subject, not one bigger version of the same thing.</em></p>
+    </div>
+  </div>
+
+  <div class="pg-screenshot-wrap" style="border-top:4px solid var(--pg-slate);">
+    <div class="pg-shot-head">
+      <span class="pg-shot-tag">Convenience · Pulse</span>
+      <span class="pg-shot-context">STEP 3 OF 3</span>
+    </div>
+    <div class="pg-screenshot-inner">
+      <h3>Grouped Exception List</h3>
+      <p>The "what do I do" layer. Every problem, listed individually — description, severity, and exactly which sections it touches, visible without clicking anything.</p>
+      <div class="pg-sample-item">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;">
+          <strong>Grade ${sample.grade} · ${escapeHtml(sample.subject)} — ${escapeHtml(sample.issue)}</strong>
+          <span class="pg-badge ${sample.severity}">${sampleLabel}</span>
+        </div>
+        <p style="margin:6px 0 8px;">${escapeHtml(sample.detail)}</p>
+        <div class="pg-shot-legend">${sample.affectedSections.map(s => `<span class="pg-chip-mini">${escapeHtml(s)}</span>`).join('')}</div>
+      </div>
+      <p class="pg-shot-takeaway"><em>${problems.length} problems, ${problems.length} rows — nothing rolled into a count you'd have to click to unpack. Only the "suggested next step" is tucked away, since that's guidance, not the problem itself.</em></p>
+      <div class="pg-shot-fakebtn">⬇ Download Report</div>
+    </div>
+  </div>`;
 }
 
 function summarizeGroup(list){
@@ -1007,43 +1089,37 @@ function buildBrochureHtml(){
   const ambers = problems.filter(p => p.severity === 'amber').sort((a,b) => b.affectedCount - a.affectedCount);
   const redSummary = summarizeGroup(reds);
   const amberSummary = summarizeGroup(ambers);
-  const needYouCount = reds.length + ambers.length;
-  const orderedProblems = reds.concat(ambers);
+
+  const watchSectionHtml = `
+    <h2 class="pg-h2" style="font-size:22px;margin-top:40px;">Worth watching <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:400;color:var(--pg-text-dim);">${ambers.length} thing${ambers.length === 1 ? '' : 's'}</span></h2>
+    <p class="pg-sub">Nothing here needs a response yet — these are early enough to just keep an eye on, covering ${amberSummary.sections} section${amberSummary.sections === 1 ? '' : 's'} across Grade${amberSummary.grades.length === 1 ? '' : 's'} ${joinList(amberSummary.grades)}. We're flagging them now so nothing quietly turns into next month's action item.</p>
+    ${ambers.map(flagCardHtml).join('')}`;
 
   return REPORT_TEMPLATE({
     reportName: "Monthly Pulse Report",
     eyebrowTag: "Convenience · Pulse",
-    badgeText: `${needYouCount} thing${needYouCount === 1 ? '' : 's'} need you`,
+    badgeText: `${reds.length} need action now`,
     summaryEyebrow: "For the principal — plain-language summary",
-    headline: `The value isn't the data — <em>it's knowing you don't have to go looking for it.</em>`,
-    subhead: "If something across the school needs attention, it surfaces on its own here, instead of you having to chase it down.",
-    calloutHtml: `Right now, <strong>${reds.length} problem${reds.length === 1 ? '' : 's'}</strong> need${reds.length === 1 ? 's' : ''} immediate action — touching Grade${redSummary.grades.length === 1 ? '' : 's'} ${joinList(redSummary.grades)} across ${joinList(redSummary.subjects)}. Another <strong>${ambers.length} problem${ambers.length === 1 ? '' : 's'}</strong> sit${ambers.length === 1 ? 's' : ''} on the watch list. Together that's <strong>${problems.length} distinct problems</strong> behind the numbers on the dashboard — everything else, ${scaleCounts.green} sections in all, is on track.`,
-    screenshotEyebrow: "Convenience · Pulse",
-    screenshotTitle: "The whole school, in one bar",
-    screenshotSub: "Every section, colored by status — click any segment on the live dashboard to see what's behind it.",
-    screenshotBodyHtml: screenshotBarHtml(),
-    screenshotLegendHtml: `<div class="pg-shot-legend">
-        <span><span class="pg-dot" style="background:#5C8F71;"></span>On Track (${scaleCounts.green})</span>
-        <span><span class="pg-dot" style="background:var(--pg-amber);"></span>Watch (${scaleCounts.amber})</span>
-        <span><span class="pg-dot" style="background:var(--pg-red);"></span>Action (${scaleCounts.red})</span>
-      </div>`,
-    screenshotCaption: "This is the actual Pulse Summary Bar your team sees — one segment per status",
+    headline: `What's happening across your school <em>right now?</em>`,
+    subhead: "A short, non-technical summary of every grade and subject in your school — so you know exactly what needs you, what's worth watching, and what's already fine.",
+    calloutHtml: `We checked <strong>${scaleTotal} sections</strong> across your school this month. Most are running fine. Right now, <strong>${reds.length} problem${reds.length === 1 ? '' : 's'} need${reds.length === 1 ? 's' : ''} action</strong> — touching <strong>${redSummary.sections} sections</strong> across Grade${redSummary.grades.length === 1 ? '' : 's'} ${joinList(redSummary.grades)}. Another <strong>${ambers.length} problem${ambers.length === 1 ? '' : 's'} ${ambers.length === 1 ? 'is' : 'are'} worth watching</strong> — covering <strong>${amberSummary.sections} sections</strong> across Grade${amberSummary.grades.length === 1 ? '' : 's'} ${joinList(amberSummary.grades)}. That's <strong>${problems.length} separate things</strong> going on in total — not one per grade-and-subject box, since a few boxes have more than one thing happening at once.`,
+    customScreenshotHtml: screenshotMultiHtml(reds, ambers),
+    screenshotCaption: "This is the actual dashboard your team sees — the same " + problems.length + " problems, shown three ways",
     stats: [
-      {n: reds.length, l: "Action required", cls: "red"},
-      {n: ambers.length, l: "Watch list", cls: "amber"},
-      {n: scaleCounts.green, l: "Sections on track", cls: "green"},
-      {n: problems.length, l: "Distinct problems", cls: "slate"}
+      {n: scaleTotal, l: "Sections checked", cls: "slate"},
+      {n: scaleCounts.green, l: "On track", cls: "green"},
+      {n: amberSummary.sections, l: "Watch", cls: "amber"},
+      {n: redSummary.sections, l: "Action needed", cls: "red"}
     ],
     legendItems: [
-      {cls:"red", label:"Action Required", text:"something is actively affecting students' learning. Worth stepping in this week."},
-      {cls:"amber", label:"Watch", text:"not urgent, but worth a look before it grows into something bigger."},
-      {cls:"green", label:"On Track", text:"no action needed. Nothing unusual in these sections this month."},
-      {cls:"slate", label:"Distinct problems", text:"a count of separate issues, not sections — one grade × subject can carry more than one."}
+      {cls:"red", label:"Action needed", text:"something is actively affecting these sections. Worth stepping in this week."},
+      {cls:"amber", label:"Watch", text:"not urgent, nothing to do yet. We're just flagging it so it doesn't catch you by surprise later."},
+      {cls:"green", label:"On track", text:"no action needed. Nothing unusual this month."}
     ],
-    flaggedTitle: `The ${problems.length} things we flagged, explained simply`,
-    flaggedSub: "Ordered from most to least urgent. Each one includes what we suggest doing about it.",
-    flaggedCardsHtml: orderedProblems.map(flagCardHtml).join(''),
-    closingQuote: `${reds.length} problem${reds.length === 1 ? '' : 's'} need${reds.length === 1 ? 's' : ''} action this month — everything else across the school is either being watched or already on track.`,
+    flaggedTitle: `Needs action now <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:400;color:var(--pg-text-dim);">${reds.length} thing${reds.length === 1 ? '' : 's'}</span>`,
+    flaggedSub: `These ${reds.length} crossed the line into needing a response this month, touching ${redSummary.sections} sections across Grade${redSummary.grades.length === 1 ? '' : 's'} ${joinList(redSummary.grades)}. Ordered by how many sections each one touches — read top to bottom for where to look first.`,
+    flaggedCardsHtml: reds.map(flagCardHtml).join('') + watchSectionHtml,
+    closingQuote: `"${reds.length} thing${reds.length === 1 ? '' : 's'} need${reds.length === 1 ? 's' : ''} you this month — everything else is either being watched or already on track."`,
     footerText: "Sample data · Greenwood International School · March 2026 — Dronalytics School Pretotype"
   });
 }
