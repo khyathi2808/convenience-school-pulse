@@ -190,7 +190,17 @@
   .next-step{font-size:12.5px;color:var(--ink-800);background:var(--forest-dim);border-left:3px solid var(--forest);padding:8px 12px;border-radius:0 6px 6px 0;line-height:1.45;}
   .next-step b{color:var(--forest);font-weight:600;}
 
-  /* ============ CARD 3B: HEATMAP ============ */
+  /* ============ CARD 3B: STATUS BUBBLE GRID ============ */
+  .bubble-grid-wrap{position:relative;}
+  .bubble-label{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--slate);letter-spacing:.03em;}
+  .bubble-label.col{text-anchor:middle;text-transform:uppercase;font-size:9px;}
+  .bubble-label.row{text-anchor:end;}
+  .bubble-dot{transition:opacity .15s ease;}
+  .bubble-dot.flagged{cursor:pointer;}
+  .bubble-dot.flagged:hover{filter:brightness(1.08);}
+  .bubble-count{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;fill:#fff;text-anchor:middle;pointer-events:none;}
+
+  /* ============ CARD 3B (legacy): HEATMAP — superseded by the bubble grid above ============ */
   .heatmap-scroll{overflow-x:auto;padding-bottom:4px;}
   table.heat{border-collapse:separate;border-spacing:5px;width:100%;min-width:420px;}
   table.heat th{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--slate);font-weight:500;text-align:center;padding:3px 2px;}
@@ -584,21 +594,26 @@
       <span class="variant-index">Step 2 of 3</span>
     </div>
     <h3>Status Grid</h3>
-    <p class="sub">The "where" layer. Each cell is one grade × subject combination. The number is how many distinct action items exist there — not sections, not severity, just how many separate things need a response. Click any flagged cell to see exactly what they are.</p>
+    <p class="sub">The "where" layer. Each dot is one grade × subject combination — the bigger and redder the dot, the more it needs a response. Click a flagged dot to see exactly what's behind it.</p>
 
-    <div class="heatmap-scroll">
-      <table class="heat" id="statusGrid" style="min-width:640px;"></table>
+    <div class="bubble-grid-wrap">
+      <svg viewBox="0 0 720 360" style="width:100%;height:auto;">
+        <g id="bubbleColHeads"></g>
+        <g id="bubbleRowHeads"></g>
+        <g id="bubbleDots"></g>
+      </svg>
+      <div class="tooltip" id="bubbleTooltip"></div>
     </div>
 
     <div class="legend" style="margin-top:14px;">
       <span class="item"><span class="swatch stable"></span> On Track</span>
       <span class="item"><span class="swatch thisweek"></span> Watch</span>
       <span class="item"><span class="swatch immediate"></span> Action</span>
-      <span class="item">Number = count of action items, not sections</span>
-      <span class="item">Blank cell = nothing flagged</span>
+      <span class="item">Dot size = count of action items, not sections</span>
+      <span class="item">Small pale dot = nothing flagged</span>
     </div>
 
-    <p class="takeaway">Grade 9 Science shows "2" — two separate, unrelated problems in the same subject, not one bigger version of the same thing. Click it to see both.</p>
+    <p class="takeaway">Grade 9 Science is the largest red dot on the grid — two separate, unrelated problems in the same subject, not one bigger version of the same thing. Click it to see both.</p>
   </div>
 
   <!-- VARIANT 3: GROUPED EXCEPTION LIST -->
@@ -739,55 +754,92 @@ function setFilter(status){
   renderGroupedList();
 }
 
-/* -------- VARIANT 2: STATUS GRID -------- */
-const statusGrid = document.getElementById('statusGrid');
-const statusClass = {green:'stable', amber:'thisweek', red:'immediate'};
+/* -------- VARIANT 2: STATUS BUBBLE GRID -------- */
+const bubbleColHeads = document.getElementById('bubbleColHeads');
+const bubbleRowHeads = document.getElementById('bubbleRowHeads');
+const bubbleDots = document.getElementById('bubbleDots');
+const bubbleTooltip = document.getElementById('bubbleTooltip');
+const bubbleColorFor = {green:'#8FB89B', amber:'#A56A1D', red:'#9C3B30'};
+const bubbleRadiusFor = {0:5, 1:11, 2:15};
+const subjectAbbrev = {"Math":"Math", "Science":"Science", "English":"English", "Social Studies":"Soc. St.", "Hindi":"Hindi", "Computer Science":"Comp. Sci."};
+
+const BUBBLE_W = 720, BUBBLE_H = 360;
+const BUBBLE_LEFT = 92, BUBBLE_TOP = 26, BUBBLE_RIGHT = 16, BUBBLE_BOTTOM = 10;
+const bColStep = (BUBBLE_W - BUBBLE_LEFT - BUBBLE_RIGHT) / scaleSubjects.length;
+const bRowStep = (BUBBLE_H - BUBBLE_TOP - BUBBLE_BOTTOM) / scaleGrades.length;
+function bColX(i){ return BUBBLE_LEFT + bColStep * (i + 0.5); }
+function bRowY(j){ return BUBBLE_TOP + bRowStep * (j + 0.5); }
 
 function renderMosaic(){ // name kept so existing setFilter() calls still work
-  statusGrid.innerHTML = '';
+  bubbleColHeads.innerHTML = '';
+  bubbleRowHeads.innerHTML = '';
+  bubbleDots.innerHTML = '';
 
-  const thead = document.createElement('thead');
-  const headRow = document.createElement('tr');
-  headRow.appendChild(document.createElement('th'));
-  scaleSubjects.forEach(s => {
-    const th = document.createElement('th');
-    th.textContent = s;
-    headRow.appendChild(th);
+  scaleSubjects.forEach((s, i) => {
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('class','bubble-label col');
+    t.setAttribute('x', bColX(i));
+    t.setAttribute('y', BUBBLE_TOP - 12);
+    t.textContent = subjectAbbrev[s] || s;
+    bubbleColHeads.appendChild(t);
   });
-  thead.appendChild(headRow);
-  statusGrid.appendChild(thead);
 
-  const tbody = document.createElement('tbody');
-  scaleGrades.forEach(g => {
-    const tr = document.createElement('tr');
-    const rowHead = document.createElement('td');
-    rowHead.className = 'rowhead';
-    rowHead.textContent = 'Grade ' + g;
-    tr.appendChild(rowHead);
+  scaleGrades.forEach((g, j) => {
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('class','bubble-label row');
+    t.setAttribute('x', BUBBLE_LEFT - 12);
+    t.setAttribute('y', bRowY(j) + 3.5);
+    t.textContent = 'Grade ' + g;
+    bubbleRowHeads.appendChild(t);
+  });
 
-    scaleSubjects.forEach(s => {
+  scaleGrades.forEach((g, j) => {
+    scaleSubjects.forEach((s, i) => {
       const key = comboKey(g, s);
       const cellProblems = problemsByCombo[key] || [];
-      const status = cellProblems.length ? worstSeverity(cellProblems) : 'green';
-      const td = document.createElement('td');
-      td.className = 'cell ' + statusClass[status];
-      if(activeFilter && status !== activeFilter) td.classList.add('dim');
+      const count = cellProblems.length;
+      const status = count ? worstSeverity(cellProblems) : 'green';
+      const cx = bColX(i), cy = bRowY(j);
+      const r = bubbleRadiusFor[count] !== undefined ? bubbleRadiusFor[count] : bubbleRadiusFor[2];
 
-      if(cellProblems.length === 0){
-        td.innerHTML = '';
-        td.setAttribute('data-tip', `Grade ${g} · ${s} — nothing flagged.`);
-      } else {
-        const label = cellProblems.length === 1 ? 'action item' : 'action items';
-        td.setAttribute('data-tip', `Grade ${g} · ${s} — ${cellProblems.length} ${label}. Click to see them.`);
-        td.innerHTML = `<span class="cell-count">${cellProblems.length}</span>`;
-        td.classList.add('clickable');
-        td.addEventListener('click', () => drillToCombo(g, s));
+      const dotGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+      dotGroup.setAttribute('class', 'bubble-dot' + (count ? ' flagged' : ''));
+      if(activeFilter && status !== activeFilter) dotGroup.style.opacity = '0.18';
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r);
+      circle.setAttribute('fill', bubbleColorFor[status]);
+      circle.setAttribute('stroke', '#FBFBF8'); circle.setAttribute('stroke-width', '2');
+      dotGroup.appendChild(circle);
+
+      if(count){
+        const countLabel = document.createElementNS('http://www.w3.org/2000/svg','text');
+        countLabel.setAttribute('class','bubble-count');
+        countLabel.setAttribute('x', cx); countLabel.setAttribute('y', cy + 3.5);
+        countLabel.textContent = count;
+        dotGroup.appendChild(countLabel);
       }
-      tr.appendChild(td);
+
+      const tipText = count
+        ? `Grade ${g} · ${s} — ${count} action item${count===1?'':'s'}. Click to see them.`
+        : `Grade ${g} · ${s} — nothing flagged.`;
+
+      dotGroup.addEventListener('mouseenter', () => {
+        bubbleTooltip.textContent = tipText;
+        const rect = circle.getBoundingClientRect();
+        const wrapRect = circle.closest('.bubble-grid-wrap').getBoundingClientRect();
+        bubbleTooltip.style.left = (rect.left - wrapRect.left + rect.width/2) + 'px';
+        bubbleTooltip.style.top = (rect.top - wrapRect.top) + 'px';
+        bubbleTooltip.style.opacity = 1;
+      });
+      dotGroup.addEventListener('mouseleave', () => { bubbleTooltip.style.opacity = 0; });
+      if(count){
+        dotGroup.addEventListener('click', () => drillToCombo(g, s));
+      }
+
+      bubbleDots.appendChild(dotGroup);
     });
-    tbody.appendChild(tr);
   });
-  statusGrid.appendChild(tbody);
 }
 renderMosaic();
 
