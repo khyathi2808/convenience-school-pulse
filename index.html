@@ -50,6 +50,17 @@
   .drona-scroll{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:var(--drona-gold);text-decoration:none;border:1px solid var(--drona-line-gold);border-radius:24px;padding:9px 20px;display:inline-block;transition:background .15s ease;}
   .drona-scroll:hover{background:rgba(201,168,76,.12);}
 
+  /* ===== USE CASES (sits between the hero explainer and the live product) ===== */
+  .drona-usecases{background:var(--drona-felt-1);color:var(--drona-text);padding:48px 24px 64px;border-top:1px solid var(--drona-line-gold);}
+  .drona-usecases-inner{max-width:980px;margin:0 auto;text-align:center;}
+  .drona-usecases-title{font-family:var(--drona-font-serif);font-weight:600;font-size:clamp(19px,2.4vw,24px);line-height:1.35;margin:0 0 30px;color:var(--drona-text);}
+  .drona-usecases-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;text-align:left;}
+  @media (max-width:820px){.drona-usecases-grid{grid-template-columns:1fr;}}
+  .drona-usecase{background:rgba(255,255,255,.03);border:1px solid var(--drona-line-gold);border-radius:12px;padding:22px 22px 20px;}
+  .drona-usecase-glyph{font-family:var(--drona-font-serif);font-size:28px;color:var(--drona-gold);line-height:1;margin-bottom:10px;}
+  .drona-usecase-text{font-family:var(--drona-font-sans);font-size:13.5px;line-height:1.6;color:var(--drona-text-secondary);margin:0;}
+  .drona-usecase-text strong{color:var(--drona-text);font-weight:600;}
+
   /* ===== LETTERHEAD HEADER ===== */
   header.letterhead{
     background:var(--ink-900);
@@ -569,6 +580,27 @@
     <h2>The value isn't the data — <em>it's knowing you don't have to go looking for it.</em></h2>
     <p>If something across the school needs attention, it surfaces on its own here, instead of you having to chase it down.</p>
     <a class="drona-scroll" href="#viz">See this month's pulse ↓</a>
+  </div>
+</section>
+
+<section class="drona-usecases">
+  <div class="drona-usecases-inner">
+    <div class="drona-eyebrow" style="margin-bottom:10px;">Where this helps</div>
+    <h2 class="drona-usecases-title">Three moments where you shouldn't have to go looking for it</h2>
+    <div class="drona-usecases-grid">
+      <div class="drona-usecase">
+        <div class="drona-usecase-glyph">&ldquo;</div>
+        <p class="drona-usecase-text"><strong>A parent calls asking if their child's grade is okay.</strong> Pull up that grade's mini chart instead of digging through separate teacher reports.</p>
+      </div>
+      <div class="drona-usecase">
+        <div class="drona-usecase-glyph">&ldquo;</div>
+        <p class="drona-usecase-text"><strong>Your week starts with "is anything on fire?"</strong> The filter pills answer that in one glance, before you open a single report.</p>
+      </div>
+      <div class="drona-usecase">
+        <div class="drona-usecase-glyph">&ldquo;</div>
+        <p class="drona-usecase-text"><strong>You need to escalate an issue to a subject coordinator.</strong> The exception list already has the exact sections affected and a suggested next step ready to share.</p>
+      </div>
+    </div>
   </div>
 </section>
 
