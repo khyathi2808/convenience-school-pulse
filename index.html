@@ -190,11 +190,17 @@
   .next-step{font-size:12.5px;color:var(--ink-800);background:var(--forest-dim);border-left:3px solid var(--forest);padding:8px 12px;border-radius:0 6px 6px 0;line-height:1.45;}
   .next-step b{color:var(--forest);font-weight:600;}
 
-  /* ============ CARD 3B: STATUS BY GRADE (stacked bars) ============ */
+  /* ============ CARD 3B: STATUS BY GRADE (small multiples) ============ */
   .grade-bars-wrap{position:relative;}
-  .grade-bar-row{display:grid;grid-template-columns:70px 1fr;align-items:center;gap:12px;margin-bottom:10px;}
-  .grade-bar-row:last-child{margin-bottom:0;}
-  .grade-bar-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-800);white-space:nowrap;}
+  .grade-panels{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:18px;}
+  .grade-panel{border:1px solid var(--rule);border-radius:10px;padding:12px 14px 10px;}
+  .grade-panel-title{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.04em;color:var(--ink-800);margin-bottom:10px;}
+  .mini-bar-row{display:flex;align-items:flex-end;gap:6px;height:56px;}
+  .mini-bar-col{display:flex;flex-direction:column;align-items:center;flex:1 1 0;min-width:0;}
+  .mini-bar{width:100%;max-width:22px;border-radius:4px 4px 0 0;transition:opacity .15s ease;}
+  .mini-bar.flagged{cursor:pointer;}
+  .mini-bar.flagged:hover{filter:brightness(1.08);}
+  .mini-bar-label{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--slate);margin-top:5px;white-space:nowrap;}
 
   /* ============ CARD 3B (legacy): HEATMAP — superseded by the bubble grid above ============ */
   .heatmap-scroll{overflow-x:auto;padding-bottom:4px;}
@@ -590,10 +596,10 @@
       <span class="variant-index">Step 2 of 3</span>
     </div>
     <h3>Status by Grade</h3>
-    <p class="sub">The "where" layer. One bar per grade, split by how many of its 6 subjects are On Track, worth watching, or need action. Click a segment to see exactly what's behind it.</p>
+    <p class="sub">The "where" layer. One mini chart per grade — each bar is a subject, and its height and color show how much attention it needs. Click a flagged bar to see exactly what's behind it.</p>
 
     <div class="grade-bars-wrap">
-      <div id="gradeBars"></div>
+      <div class="grade-panels" id="gradeBars"></div>
       <div class="tooltip" id="gradeBarTooltip"></div>
     </div>
 
@@ -601,10 +607,10 @@
       <span class="item"><span class="swatch stable"></span> On Track</span>
       <span class="item"><span class="swatch thisweek"></span> Watch</span>
       <span class="item"><span class="swatch immediate"></span> Action</span>
-      <span class="item">Each bar totals 6 subjects</span>
+      <span class="item">Taller, redder bar = more action items</span>
     </div>
 
-    <p class="takeaway">Grade 11 has the most subjects needing action — two separate, unrelated problems, not one bigger version of the same thing. Click its red segment to see both.</p>
+    <p class="takeaway">Grade 11's English and Computer Science bars are both red — two separate, unrelated problems, not one bigger version of the same thing. Click either to see what's behind it.</p>
   </div>
 
   <!-- VARIANT 3: GROUPED EXCEPTION LIST -->
@@ -745,59 +751,71 @@ function setFilter(status){
   renderGroupedList();
 }
 
-/* -------- VARIANT 2: STATUS BY GRADE (stacked bar per grade) -------- */
+/* -------- VARIANT 2: STATUS BY GRADE (small multiples) -------- */
 const gradeBars = document.getElementById('gradeBars');
 const gradeBarTooltip = document.getElementById('gradeBarTooltip');
 const statusLabelFor = {green:'On Track', amber:'Watch', red:'Action'};
+const statusColorFor = {green:'#8FB89B', amber:'#A56A1D', red:'#9C3B30'};
+const miniBarHeightFor = {0:4, 1:30, 2:56};
+const subjectAbbrev = {"Math":"Ma", "Science":"Sc", "English":"En", "Social Studies":"SS", "Hindi":"Hi", "Computer Science":"CS"};
 
 function renderMosaic(){ // name kept so existing setFilter() calls still work
   gradeBars.innerHTML = '';
 
   scaleGrades.forEach(g => {
-    const counts = {green:0, amber:0, red:0};
+    const panel = document.createElement('div');
+    panel.className = 'grade-panel';
+
+    const title = document.createElement('div');
+    title.className = 'grade-panel-title';
+    title.textContent = 'Grade ' + g;
+    panel.appendChild(title);
+
+    const row = document.createElement('div');
+    row.className = 'mini-bar-row';
+
     scaleSubjects.forEach(s => {
       const key = comboKey(g, s);
       const cellProblems = problemsByCombo[key] || [];
-      const status = cellProblems.length ? worstSeverity(cellProblems) : 'green';
-      counts[status]++;
-    });
+      const count = cellProblems.length;
+      const status = count ? worstSeverity(cellProblems) : 'green';
 
-    const row = document.createElement('div');
-    row.className = 'grade-bar-row';
+      const col = document.createElement('div');
+      col.className = 'mini-bar-col';
 
-    const rowLabel = document.createElement('div');
-    rowLabel.className = 'grade-bar-label';
-    rowLabel.textContent = 'Grade ' + g;
-    row.appendChild(rowLabel);
+      const bar = document.createElement('div');
+      bar.className = 'mini-bar' + (count ? ' flagged' : '');
+      bar.style.height = miniBarHeightFor[count] + 'px';
+      bar.style.background = statusColorFor[status];
+      if(activeFilter && status !== activeFilter) bar.style.opacity = '0.25';
 
-    const track = document.createElement('div');
-    track.className = 'pulse-bar';
-
-    ['green','amber','red'].forEach(status => {
-      const count = counts[status];
-      if(count === 0) return;
-      const seg = document.createElement('div');
-      seg.className = 'pulse-seg ' + status;
-      seg.style.width = (count / scaleSubjects.length * 100) + '%';
-      if(activeFilter && status !== activeFilter) seg.style.opacity = '0.18';
-      if(status !== 'green'){
-        seg.style.cursor = 'pointer';
-        seg.addEventListener('click', () => drillToGradeStatus(g, status));
-      }
-      seg.addEventListener('mouseenter', () => {
-        gradeBarTooltip.textContent = `Grade ${g} · ${statusLabelFor[status]} — ${count} subject${count===1?'':'s'}`;
-        const rect = seg.getBoundingClientRect();
-        const wrapRect = seg.closest('.grade-bars-wrap').getBoundingClientRect();
+      const tipText = count
+        ? `Grade ${g} · ${s} — ${statusLabelFor[status]}, ${count} action item${count===1?'':'s'}. Click to see them.`
+        : `Grade ${g} · ${s} — nothing flagged.`;
+      bar.addEventListener('mouseenter', () => {
+        gradeBarTooltip.textContent = tipText;
+        const rect = bar.getBoundingClientRect();
+        const wrapRect = bar.closest('.grade-bars-wrap').getBoundingClientRect();
         gradeBarTooltip.style.left = (rect.left - wrapRect.left + rect.width/2) + 'px';
         gradeBarTooltip.style.top = (rect.top - wrapRect.top) + 'px';
         gradeBarTooltip.style.opacity = 1;
       });
-      seg.addEventListener('mouseleave', () => { gradeBarTooltip.style.opacity = 0; });
-      track.appendChild(seg);
+      bar.addEventListener('mouseleave', () => { gradeBarTooltip.style.opacity = 0; });
+      if(count){
+        bar.addEventListener('click', () => drillToCombo(g, s));
+      }
+      col.appendChild(bar);
+
+      const label = document.createElement('div');
+      label.className = 'mini-bar-label';
+      label.textContent = subjectAbbrev[s] || s;
+      col.appendChild(label);
+
+      row.appendChild(col);
     });
 
-    row.appendChild(track);
-    gradeBars.appendChild(row);
+    panel.appendChild(row);
+    gradeBars.appendChild(panel);
   });
 }
 renderMosaic();
@@ -871,8 +889,8 @@ glistBackLink.addEventListener('click', () => {
   renderGroupedList();
 });
 
-function drillToGradeStatus(grade, status){
-  drillFn = (p) => p.grade === grade && p.severity === status;
+function drillToCombo(grade, subject){
+  drillFn = (p) => p.grade === grade && p.subject === subject;
   openProblemId = null;
   renderGroupedList();
   const card = document.getElementById('variant3Card');
