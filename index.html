@@ -553,7 +553,6 @@
 
 <section class="drona-hero drona-explainer">
   <div class="drona-explainer-inner">
-    <div class="drona-eyebrow">Convenience · Pulse</div>
     <h2>The value isn't the data — <em>it's knowing you don't have to go looking for it.</em></h2>
     <p>If something across the school needs attention, it surfaces on its own here, instead of you having to chase it down.</p>
     <a class="drona-scroll" href="#viz">See this month's pulse ↓</a>
@@ -564,8 +563,7 @@
 
   <!-- VARIANT 1: SUMMARY BAR -->
   <div class="card full pulse">
-    <div class="eyebrow-row">
-      <span class="tag pulse">Convenience · Pulse</span>
+    <div class="eyebrow-row" style="justify-content:flex-end;">
       <span class="variant-index">Step 1 of 3</span>
     </div>
     <h3>Pulse Summary Bar</h3>
@@ -582,8 +580,7 @@
 
   <!-- VARIANT 2: STATUS GRID -->
   <div class="card full pulse">
-    <div class="eyebrow-row">
-      <span class="tag pulse">Convenience · Pulse</span>
+    <div class="eyebrow-row" style="justify-content:flex-end;">
       <span class="variant-index">Step 2 of 3</span>
     </div>
     <h3>Status Grid</h3>
@@ -606,8 +603,7 @@
 
   <!-- VARIANT 3: GROUPED EXCEPTION LIST -->
   <div class="card full pulse" id="variant3Card">
-    <div class="eyebrow-row">
-      <span class="tag pulse">Convenience · Pulse</span>
+    <div class="eyebrow-row" style="justify-content:flex-end;">
       <span class="variant-index">Step 3 of 3</span>
     </div>
     <h3>Grouped Exception List</h3>
@@ -625,7 +621,7 @@
   </div>
 
 
-<footer>Sample data · Greenwood International School · March 2026 — Dronalytics School Pretotype</footer>
+<footer>Sample data · March 2026 — Dronalytics School Pretotype</footer>
 </div>
 
 <script>
@@ -1112,7 +1108,7 @@ function screenshotMultiHtml(reds, ambers){
   return `
   <div class="pg-screenshot-wrap" style="border-top:4px solid var(--pg-red);">
     <div class="pg-shot-head">
-      <span class="pg-shot-tag">Convenience · Pulse</span>
+      <span class="pg-shot-tag">Live Screenshot</span>
       <span class="pg-shot-context">STEP 1 OF 3</span>
     </div>
     <div class="pg-screenshot-inner">
@@ -1129,7 +1125,7 @@ function screenshotMultiHtml(reds, ambers){
 
   <div class="pg-screenshot-wrap" style="border-top:4px solid var(--pg-amber);">
     <div class="pg-shot-head">
-      <span class="pg-shot-tag">Convenience · Pulse</span>
+      <span class="pg-shot-tag">Live Screenshot</span>
       <span class="pg-shot-context">STEP 2 OF 3</span>
     </div>
     <div class="pg-screenshot-inner">
@@ -1142,7 +1138,7 @@ function screenshotMultiHtml(reds, ambers){
 
   <div class="pg-screenshot-wrap" style="border-top:4px solid var(--pg-slate);">
     <div class="pg-shot-head">
-      <span class="pg-shot-tag">Convenience · Pulse</span>
+      <span class="pg-shot-tag">Live Screenshot</span>
       <span class="pg-shot-context">STEP 3 OF 3</span>
     </div>
     <div class="pg-screenshot-inner">
@@ -1187,7 +1183,6 @@ function buildBrochureHtml(){
 
   return REPORT_TEMPLATE({
     reportName: "Monthly Pulse Report",
-    eyebrowTag: "Convenience · Pulse",
     badgeText: `${reds.length} need action now`,
     summaryEyebrow: "For the principal — plain-language summary",
     headline: `What's happening across your school <em>right now?</em>`,
@@ -1210,7 +1205,7 @@ function buildBrochureHtml(){
     flaggedSub: `These ${reds.length} crossed the line into needing a response this month, touching ${redSummary.sections} sections across Grade${redSummary.grades.length === 1 ? '' : 's'} ${joinList(redSummary.grades)}. Ordered by how many sections each one touches — read top to bottom for where to look first.`,
     flaggedCardsHtml: reds.map(flagCardHtml).join('') + watchSectionHtml,
     closingQuote: `"${reds.length} thing${reds.length === 1 ? '' : 's'} need${reds.length === 1 ? 's' : ''} you this month — everything else is either being watched or already on track."`,
-    footerText: "Sample data · Greenwood International School · March 2026 — Dronalytics School Pretotype"
+    footerText: "Sample data · March 2026 — Dronalytics School Pretotype"
   });
 }
 
