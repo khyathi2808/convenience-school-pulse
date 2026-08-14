@@ -390,6 +390,7 @@
   .pulse-seg.amber{background:var(--amber);}
   .pulse-seg.red{background:var(--rust);}
   .pulse-legend-row{display:flex;justify-content:space-between;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;}
+  .pulse-filter-mini{display:flex;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;}
   .pulse-legend-item{display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 8px;border-radius:6px;}
   .pulse-legend-item.active-filter{background:var(--paper);}
   .pulse-legend-item .sw{width:10px;height:10px;border-radius:50%;}
@@ -573,30 +574,14 @@
 
 <div class="wrap" id="viz">
 
-  <!-- VARIANT 1: SUMMARY BAR -->
-  <div class="card full pulse">
-    <div class="eyebrow-row" style="justify-content:flex-end;">
-      <span class="variant-index">Step 1 of 3</span>
-    </div>
-    <h3>Pulse Summary Bar</h3>
-    <p class="sub">The single-glance layer. One segmented bar, real counts — this is the one place raw numbers earn their place, since these are item counts, not diagnostic scores.</p>
-
-    <div class="pulse-bar-wrap">
-      <div class="pulse-bar" id="pulseBar"></div>
-      <div class="pulse-legend-row" id="pulseLegend"></div>
-    </div>
-    <span class="clear-filter" id="clearFilter" style="display:none;">Clear filter — show everything</span>
-
-    <p class="takeaway">Click a segment above — it filters the Mosaic and the Exception List below too, so all three move together.</p>
-  </div>
-
   <!-- VARIANT 2: STATUS BY GRADE -->
   <div class="card full pulse">
-    <div class="eyebrow-row" style="justify-content:flex-end;">
-      <span class="variant-index">Step 2 of 3</span>
+    <div class="eyebrow-row" style="justify-content:flex-end;gap:14px;flex-wrap:wrap;">
+      <div class="pulse-filter-mini" id="pulseFilterMini"></div>
+      <span class="variant-index">Step 1 of 2</span>
     </div>
     <h3>Status by Grade</h3>
-    <p class="sub">The "where" layer. One mini chart per grade — each bar is a subject, and its height and color show how much attention it needs. Click a flagged bar to see exactly what's behind it.</p>
+    <p class="sub">The "where" layer. One mini chart per grade — each bar is a subject, and its height and color show how much attention it needs. Filter by status at the top right, or click a flagged bar directly — either way, the Exception List below moves with it.</p>
 
     <div class="grade-bars-wrap">
       <div class="grade-panels" id="gradeBars"></div>
@@ -616,7 +601,7 @@
   <!-- VARIANT 3: GROUPED EXCEPTION LIST -->
   <div class="card full pulse" id="variant3Card">
     <div class="eyebrow-row" style="justify-content:flex-end;">
-      <span class="variant-index">Step 3 of 3</span>
+      <span class="variant-index">Step 2 of 2</span>
     </div>
     <h3>Grouped Exception List</h3>
     <p class="sub">The "what do I do" layer. Every problem, listed individually — description, severity, and exactly which sections it touches, visible without clicking anything. Click a number in the Grid above to jump to just one grade × subject.</p>
@@ -700,9 +685,9 @@ problems.forEach(p => {
 });
 function worstSeverity(list){ return list.some(p=>p.severity==='red') ? 'red' : 'amber'; }
 
-// Totals for the Summary Bar — real section counts, for scale only. The
-// Grid and List never show this number; it exists purely so the top-level
-// bar can say "this many sections, across this many actual problems."
+// Totals for the compact status filter — real section counts, for scale only.
+// The mini charts and List never show this number; it exists purely so the
+// filter pills can say "this many sections, across this many actual problems."
 const totalSections = scaleGrades.length * scaleSubjects.reduce((a,s)=>a+sectionsFor(s),0);
 const redAffected = problems.filter(p=>p.severity==='red').reduce((a,p)=>a+p.affectedCount,0);
 const amberAffected = problems.filter(p=>p.severity==='amber').reduce((a,p)=>a+p.affectedCount,0);
@@ -713,21 +698,11 @@ const scaleCounts = {
 };
 const scaleTotal = totalSections;
 
-/* -------- VARIANT 1: SUMMARY BAR -------- */
-const pulseBar = document.getElementById('pulseBar');
-const pulseLegend = document.getElementById('pulseLegend');
-const clearFilter = document.getElementById('clearFilter');
+/* -------- Compact status filter — lives in the Status by Grade card now -------- */
+const pulseFilterMini = document.getElementById('pulseFilterMini');
 let activeFilter = null;
 
 function pct(n){ return (n/scaleTotal*100).toFixed(1); }
-
-['green','amber','red'].forEach(status => {
-  const seg = document.createElement('div');
-  seg.className = 'pulse-seg ' + status;
-  seg.style.width = pct(scaleCounts[status]) + '%';
-  seg.addEventListener('click', () => setFilter(status));
-  pulseBar.appendChild(seg);
-});
 
 const legendLabels = {green:"On Track", amber:"Watch", red:"Action"};
 ['green','amber','red'].forEach(status => {
@@ -736,14 +711,11 @@ const legendLabels = {green:"On Track", amber:"Watch", red:"Action"};
   item.setAttribute('data-status', status);
   item.innerHTML = `<span class="sw ${status}"></span><span class="count">${scaleCounts[status]}</span><span class="lbl">${legendLabels[status]}</span>`;
   item.addEventListener('click', () => setFilter(status));
-  pulseLegend.appendChild(item);
+  pulseFilterMini.appendChild(item);
 });
-
-clearFilter.addEventListener('click', () => setFilter(null));
 
 function setFilter(status){
   activeFilter = (activeFilter === status) ? null : status;
-  clearFilter.style.display = activeFilter ? 'inline-block' : 'none';
   document.querySelectorAll('.pulse-legend-item').forEach(el => {
     el.classList.toggle('active-filter', el.getAttribute('data-status') === activeFilter);
   });
