@@ -190,15 +190,11 @@
   .next-step{font-size:12.5px;color:var(--ink-800);background:var(--forest-dim);border-left:3px solid var(--forest);padding:8px 12px;border-radius:0 6px 6px 0;line-height:1.45;}
   .next-step b{color:var(--forest);font-weight:600;}
 
-  /* ============ CARD 3B: STATUS BUBBLE GRID ============ */
-  .bubble-grid-wrap{position:relative;}
-  .bubble-label{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--slate);letter-spacing:.03em;}
-  .bubble-label.col{text-anchor:middle;text-transform:uppercase;font-size:9px;}
-  .bubble-label.row{text-anchor:end;}
-  .bubble-dot{transition:opacity .15s ease;}
-  .bubble-dot.flagged{cursor:pointer;}
-  .bubble-dot.flagged:hover{filter:brightness(1.08);}
-  .bubble-count{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;fill:#fff;text-anchor:middle;pointer-events:none;}
+  /* ============ CARD 3B: STATUS BY GRADE (stacked bars) ============ */
+  .grade-bars-wrap{position:relative;}
+  .grade-bar-row{display:grid;grid-template-columns:70px 1fr;align-items:center;gap:12px;margin-bottom:10px;}
+  .grade-bar-row:last-child{margin-bottom:0;}
+  .grade-bar-label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-800);white-space:nowrap;}
 
   /* ============ CARD 3B (legacy): HEATMAP — superseded by the bubble grid above ============ */
   .heatmap-scroll{overflow-x:auto;padding-bottom:4px;}
@@ -588,32 +584,27 @@
     <p class="takeaway">Click a segment above — it filters the Mosaic and the Exception List below too, so all three move together.</p>
   </div>
 
-  <!-- VARIANT 2: STATUS GRID -->
+  <!-- VARIANT 2: STATUS BY GRADE -->
   <div class="card full pulse">
     <div class="eyebrow-row" style="justify-content:flex-end;">
       <span class="variant-index">Step 2 of 3</span>
     </div>
-    <h3>Status Grid</h3>
-    <p class="sub">The "where" layer. Each dot is one grade × subject combination — the bigger and redder the dot, the more it needs a response. Click a flagged dot to see exactly what's behind it.</p>
+    <h3>Status by Grade</h3>
+    <p class="sub">The "where" layer. One bar per grade, split by how many of its 6 subjects are On Track, worth watching, or need action. Click a segment to see exactly what's behind it.</p>
 
-    <div class="bubble-grid-wrap">
-      <svg viewBox="0 0 720 360" style="width:100%;height:auto;">
-        <g id="bubbleColHeads"></g>
-        <g id="bubbleRowHeads"></g>
-        <g id="bubbleDots"></g>
-      </svg>
-      <div class="tooltip" id="bubbleTooltip"></div>
+    <div class="grade-bars-wrap">
+      <div id="gradeBars"></div>
+      <div class="tooltip" id="gradeBarTooltip"></div>
     </div>
 
     <div class="legend" style="margin-top:14px;">
       <span class="item"><span class="swatch stable"></span> On Track</span>
       <span class="item"><span class="swatch thisweek"></span> Watch</span>
       <span class="item"><span class="swatch immediate"></span> Action</span>
-      <span class="item">Dot size = count of action items, not sections</span>
-      <span class="item">Small pale dot = nothing flagged</span>
+      <span class="item">Each bar totals 6 subjects</span>
     </div>
 
-    <p class="takeaway">Grade 9 Science is the largest red dot on the grid — two separate, unrelated problems in the same subject, not one bigger version of the same thing. Click it to see both.</p>
+    <p class="takeaway">Grade 11 has the most subjects needing action — two separate, unrelated problems, not one bigger version of the same thing. Click its red segment to see both.</p>
   </div>
 
   <!-- VARIANT 3: GROUPED EXCEPTION LIST -->
@@ -754,91 +745,59 @@ function setFilter(status){
   renderGroupedList();
 }
 
-/* -------- VARIANT 2: STATUS BUBBLE GRID -------- */
-const bubbleColHeads = document.getElementById('bubbleColHeads');
-const bubbleRowHeads = document.getElementById('bubbleRowHeads');
-const bubbleDots = document.getElementById('bubbleDots');
-const bubbleTooltip = document.getElementById('bubbleTooltip');
-const bubbleColorFor = {green:'#8FB89B', amber:'#A56A1D', red:'#9C3B30'};
-const bubbleRadiusFor = {0:5, 1:11, 2:15};
-const subjectAbbrev = {"Math":"Math", "Science":"Science", "English":"English", "Social Studies":"Soc. St.", "Hindi":"Hindi", "Computer Science":"Comp. Sci."};
-
-const BUBBLE_W = 720, BUBBLE_H = 360;
-const BUBBLE_LEFT = 92, BUBBLE_TOP = 26, BUBBLE_RIGHT = 16, BUBBLE_BOTTOM = 10;
-const bColStep = (BUBBLE_W - BUBBLE_LEFT - BUBBLE_RIGHT) / scaleSubjects.length;
-const bRowStep = (BUBBLE_H - BUBBLE_TOP - BUBBLE_BOTTOM) / scaleGrades.length;
-function bColX(i){ return BUBBLE_LEFT + bColStep * (i + 0.5); }
-function bRowY(j){ return BUBBLE_TOP + bRowStep * (j + 0.5); }
+/* -------- VARIANT 2: STATUS BY GRADE (stacked bar per grade) -------- */
+const gradeBars = document.getElementById('gradeBars');
+const gradeBarTooltip = document.getElementById('gradeBarTooltip');
+const statusLabelFor = {green:'On Track', amber:'Watch', red:'Action'};
 
 function renderMosaic(){ // name kept so existing setFilter() calls still work
-  bubbleColHeads.innerHTML = '';
-  bubbleRowHeads.innerHTML = '';
-  bubbleDots.innerHTML = '';
+  gradeBars.innerHTML = '';
 
-  scaleSubjects.forEach((s, i) => {
-    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('class','bubble-label col');
-    t.setAttribute('x', bColX(i));
-    t.setAttribute('y', BUBBLE_TOP - 12);
-    t.textContent = subjectAbbrev[s] || s;
-    bubbleColHeads.appendChild(t);
-  });
-
-  scaleGrades.forEach((g, j) => {
-    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-    t.setAttribute('class','bubble-label row');
-    t.setAttribute('x', BUBBLE_LEFT - 12);
-    t.setAttribute('y', bRowY(j) + 3.5);
-    t.textContent = 'Grade ' + g;
-    bubbleRowHeads.appendChild(t);
-  });
-
-  scaleGrades.forEach((g, j) => {
-    scaleSubjects.forEach((s, i) => {
+  scaleGrades.forEach(g => {
+    const counts = {green:0, amber:0, red:0};
+    scaleSubjects.forEach(s => {
       const key = comboKey(g, s);
       const cellProblems = problemsByCombo[key] || [];
-      const count = cellProblems.length;
-      const status = count ? worstSeverity(cellProblems) : 'green';
-      const cx = bColX(i), cy = bRowY(j);
-      const r = bubbleRadiusFor[count] !== undefined ? bubbleRadiusFor[count] : bubbleRadiusFor[2];
-
-      const dotGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
-      dotGroup.setAttribute('class', 'bubble-dot' + (count ? ' flagged' : ''));
-      if(activeFilter && status !== activeFilter) dotGroup.style.opacity = '0.18';
-
-      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-      circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r);
-      circle.setAttribute('fill', bubbleColorFor[status]);
-      circle.setAttribute('stroke', '#FBFBF8'); circle.setAttribute('stroke-width', '2');
-      dotGroup.appendChild(circle);
-
-      if(count){
-        const countLabel = document.createElementNS('http://www.w3.org/2000/svg','text');
-        countLabel.setAttribute('class','bubble-count');
-        countLabel.setAttribute('x', cx); countLabel.setAttribute('y', cy + 3.5);
-        countLabel.textContent = count;
-        dotGroup.appendChild(countLabel);
-      }
-
-      const tipText = count
-        ? `Grade ${g} · ${s} — ${count} action item${count===1?'':'s'}. Click to see them.`
-        : `Grade ${g} · ${s} — nothing flagged.`;
-
-      dotGroup.addEventListener('mouseenter', () => {
-        bubbleTooltip.textContent = tipText;
-        const rect = circle.getBoundingClientRect();
-        const wrapRect = circle.closest('.bubble-grid-wrap').getBoundingClientRect();
-        bubbleTooltip.style.left = (rect.left - wrapRect.left + rect.width/2) + 'px';
-        bubbleTooltip.style.top = (rect.top - wrapRect.top) + 'px';
-        bubbleTooltip.style.opacity = 1;
-      });
-      dotGroup.addEventListener('mouseleave', () => { bubbleTooltip.style.opacity = 0; });
-      if(count){
-        dotGroup.addEventListener('click', () => drillToCombo(g, s));
-      }
-
-      bubbleDots.appendChild(dotGroup);
+      const status = cellProblems.length ? worstSeverity(cellProblems) : 'green';
+      counts[status]++;
     });
+
+    const row = document.createElement('div');
+    row.className = 'grade-bar-row';
+
+    const rowLabel = document.createElement('div');
+    rowLabel.className = 'grade-bar-label';
+    rowLabel.textContent = 'Grade ' + g;
+    row.appendChild(rowLabel);
+
+    const track = document.createElement('div');
+    track.className = 'pulse-bar';
+
+    ['green','amber','red'].forEach(status => {
+      const count = counts[status];
+      if(count === 0) return;
+      const seg = document.createElement('div');
+      seg.className = 'pulse-seg ' + status;
+      seg.style.width = (count / scaleSubjects.length * 100) + '%';
+      if(activeFilter && status !== activeFilter) seg.style.opacity = '0.18';
+      if(status !== 'green'){
+        seg.style.cursor = 'pointer';
+        seg.addEventListener('click', () => drillToGradeStatus(g, status));
+      }
+      seg.addEventListener('mouseenter', () => {
+        gradeBarTooltip.textContent = `Grade ${g} · ${statusLabelFor[status]} — ${count} subject${count===1?'':'s'}`;
+        const rect = seg.getBoundingClientRect();
+        const wrapRect = seg.closest('.grade-bars-wrap').getBoundingClientRect();
+        gradeBarTooltip.style.left = (rect.left - wrapRect.left + rect.width/2) + 'px';
+        gradeBarTooltip.style.top = (rect.top - wrapRect.top) + 'px';
+        gradeBarTooltip.style.opacity = 1;
+      });
+      seg.addEventListener('mouseleave', () => { gradeBarTooltip.style.opacity = 0; });
+      track.appendChild(seg);
+    });
+
+    row.appendChild(track);
+    gradeBars.appendChild(row);
   });
 }
 renderMosaic();
@@ -849,16 +808,16 @@ const glistBack = document.getElementById('glistBack');
 const glistBackLink = document.getElementById('glistBackLink');
 const pillClass = {red:'immediate', amber:'thisweek'};
 const pillLabel = {red:'Immediate', amber:'This Week'};
-let drillKey = null;      // grade|subject when drilled in from the Grid
+let drillFn = null;       // predicate(problem) => bool, set when drilled in from the bars above
 let openProblemId = null; // which single problem row has its "next step" expanded
 
 function problemId(p){ return p.grade + '|' + p.subject + '|' + p.issue; }
 
 function renderGroupedList(){
   glistRoot.innerHTML = '';
-  glistBack.style.display = drillKey ? 'block' : 'none';
+  glistBack.style.display = drillFn ? 'block' : 'none';
 
-  const source = drillKey ? (problemsByCombo[drillKey] || []) : problems;
+  const source = drillFn ? problems.filter(drillFn) : problems;
   const sorted = source.slice().sort((a,b) => {
     if(a.severity !== b.severity) return a.severity === 'red' ? -1 : 1;
     return b.affectedCount - a.affectedCount;
@@ -868,7 +827,7 @@ function renderGroupedList(){
     const id = problemId(p);
     const li = document.createElement('li');
     li.className = 'grow';
-    if(activeFilter && !drillKey && p.severity !== activeFilter) li.classList.add('filtered-out');
+    if(activeFilter && !drillFn && p.severity !== activeFilter) li.classList.add('filtered-out');
     if(openProblemId === id) li.classList.add('open', 'highlight');
 
     const chips = p.affectedSections.map(name =>
@@ -908,12 +867,12 @@ function renderGroupedList(){
 renderGroupedList();
 
 glistBackLink.addEventListener('click', () => {
-  drillKey = null; openProblemId = null;
+  drillFn = null; openProblemId = null;
   renderGroupedList();
 });
 
-function drillToCombo(grade, subject){
-  drillKey = comboKey(grade, subject);
+function drillToGradeStatus(grade, status){
+  drillFn = (p) => p.grade === grade && p.severity === status;
   openProblemId = null;
   renderGroupedList();
   const card = document.getElementById('variant3Card');
